@@ -1,0 +1,203 @@
+@Autor: Peiyi Xiao
+@Copy right all reserved by Peiyi Xiao
+
+Apache Camel 是一个非常强大的基于规则的路由以及媒介引擎，该引擎提供了一个基于POJO的 
+企业应用模式(Enterprise Integration Patterns)的实现，
+你可以采用其异常强大且十分易用的API (可以说是一种Java的领域定义语言 Domain Specific Language)来配置其路由或者中介的规则。
+Apache Camel 采用URI来描述各种组件，这样你可以很方便地与各种传输或者消息模块进行交互，
+其中包含的模块有 HTTP, ActiveMQ, JMS, JBI, SCA, MINA or CXF Bus API。 
+这些模块是采用可插拔的方式进行工作的。Apache Camel的核心十分小巧你可以很容易地将其集成在各种Java应用中。 
+
+
+
+------------------------------------------------architecture and concept of Camel------------------------------------------------
+Camel is composed of processors, components, and routes. (Camel是由处理器，组件和路由组成的。 所有这些都包含在CamelContext中。)
+路由引擎使用路由作为消息路由的规范。
+路由使用Camel的域特定语言（DSL）之一来定义。 处理器用于在路由期间转换和操作消息，并实现所有的EIP模式，这些模式在DSL语言中都有相应的关键字。
+组件是Camel中用于向其他系统添加连接的扩展点。 为了将这些系统公开给Camel的其他部分，组件提供了一个端点接口。
+
+
+CamelContext 
+=================================================
+CamelContext是一个容器。 你可以把它看作Camel的运行时系统，它把所有的东西放在一起。
+CamelContext提供了许多有用的服务，最值得注意的是组件，类型转换器，注册表，端点，路由，数据格式和语言。
+
+
+routing engine
+=================================================
+Camel的路由引擎是实际上将消息转移到底层的东西。这个引擎不会暴露给开发者，但是你应该知道它在那里，并且它完成了所有繁重的工作，确保消息的路由正确
+
+
+routes
+=================================================
+路由显然是Camel的核心抽象。定义路由最简单的方法就是作为一个处理器链。 在消息应用程序中使用路由器有很多原因。 通过解耦客户端与服务器，以及消费者的生产者，路由可以
+
+■动态决定客户端将调用什么服务器
+
+■提供灵活的方式来添加额外的处理
+
+■允许客户和服务器独立开发
+
+■允许服务器的客户端被删除（使用mock）进行测试
+
+■通过连接完成一件好事的不同系统来培养更好的设计实践
+
+■增强某些系统（如消息代理和ESB）的功能和特性
+
+Camel中的每条路线都有唯一的标识符，用于记录，调试，监控以及启动和停止路线。 路由也只有一个消息输入源，所以它们被有效地绑定到一个输入端点。
+
+为了定义路由，使用DSL。
+
+
+DOMAIN-SPECIFIC LANGUAGE (DSL)(域特定语言（DSL）)
+================================================
+为了将处理器和终端连接起来形成路由，Camel定义了一个DSL。 DSL这个术语在这里有点松散。 在Camel中，DSL意味着流畅的Java API，其中包含为EIP术语命名的方法。
+
+考虑这个例子：
+
+from("file:data/inbox").filter().xpath("/order[not(@test)]").to("jms:queue:order")
+
+
+PROCESSOR(处理器)
+================================================
+处理器是一个核心Camel概念，代表了一个能够使用，创建或修改传入交换的节点。 
+在路由期间，交换从一个处理器流向另一个; 因此，您可以将路由视为具有专用处理器作为节点的图形，
+以及将一个处理器的输出连接到另一个处理器的输入的线路。 许多处理器都是EIP的实现，但是可以轻松实现自己的定制处理器并将其插入到路由中。
+
+
+COMPONENT(组件)
+================================================
+组件是Camel的主要扩展点。到目前为止，Camel生态系统中有80多个组件，其功能从数据传输到DSL，数据格式等等。 你甚至可以为Camel创建自己的组件.
+从编程角度来看，组件非常简单：它们与URI中使用的名称相关联，它们作为端点的工厂。 例如，FileComponent通过URI中的文件引用，并创建FileEndpoints
+
+
+PRODUCER(生产者)
+================================================
+生产者是Camel抽象，是指能够创建消息并将消息发送到端点的实体。
+当需要将消息发送到端点时，生产者将创建一个交换并使用与该特定端点兼容的数据来填充它。
+例如，FileProducer会将消息正文写入文件。 另一方面，JmsProducer会将Camel消息映射到javax.jms.Message，然后将其发送到JMS目标。 
+这是Camel的一个重要特征，因为它隐藏了与特定运输交互的复杂性。 所有你需要做的就是把消息路由到一个端点，生产者做繁重的工作
+
+
+CONSUMER(消费者)
+================================================
+消费者是接收生产者产生的消息的服务，将其包装在交换中并发送给他们进行处理。 消费者是Camel交易的来源。
+在Camel中有两种消费者：事件驱动的消费者和轮询的消费者。
+这些消费者之间的差异是重要的，因为他们帮助解决不同的问题。
+
+
+EVENT-DRIVEN CONSUMER(事件驱动的消费者)
+================================================
+一个事件驱动的消费者等待空闲，直到消息到达，然后唤醒并消费该消息。
+这种消费者大多与客户端 - 服务器体系结构和Web服务相关联。 它在EIP世界中也被称为异步接收器。 
+事件驱动的使用者在特定的消息通道（通常是TCP / IP端口或JMS队列）上侦听，并等待客户端向其发送消息。 当消息到达时，消费者醒来并把消息处理。
+
+
+POLLING CONSUMER(轮询消费者)
+================================================
+轮询消费者主动检查新消息。
+与事件驱动的消费者形成对比的是，轮询消费者主动从特定源（例如FTP服务器）获取消息。 轮询消费者也被称为EIP术语中的同步接收者，因为它在处理完当前消息之前不
+
+轮询更多的消息。 轮询消费者的常见口味是排定的轮询消费者，其按预定的时间间隔进行轮询。 文件，FTP和电子邮件传输都使用计划的轮询使用者。
+
+
+
+
+------------------------------------------------important elements of Camel------------------------------------------------
+Endpoint - 使用URL的方式描述对目标系统的通信
+			An endpoint is the Camel abstraction that models the end of a channel through which a system can send or receive messages. 
+			端点是模拟系统可以通过其发送或接收消息的通道的末端的Camel抽象
+			An endpoint acts as a neutral interface allowing systems to integrate.
+			一个端点作为一个中立的接口，允许系统集成。
+			file:data/inbox?delay=5000
+			file: - scheme
+			data/inbox - context path
+			delay=5000 - options
+			Endpoint URIs are divided into three parts: a scheme, a context path, and options.
+			在Camel中，您使用URI配置端点，例如file:data/inbox?delay=5000，您也可以用这种方式引用端点。在运行时，Camel将根据URI表示法查找端点. 
+			之后Camel会找到正确的组件处理那种类型的的端点。（在上面情况下，文件的方案选择FileComponent）
+			FileComponent然后作为一个工厂创建基于URI的剩余部分的FileEndpoint。上下文路径data/inbox②通知FileComponent起始文件夹是data/inbox。
+			选项delay=5000 表示应该以5秒的间隔轮询文件。
+			
+Exchange - 帮助开发人员在控制端点到处理器、处理器到处理器的路由过程中完成消息的同一描述
+	--exchangeId
+	--fromEndpoint
+	--properties
+	--pattern
+	--exception
+	
+Message - Exchange中还有两个重要属性 inMessage 和 outMessage
+		- 当控制端点和处理器、处理器和处理器之间的Message在Exchange中传递时，Exchange会自动将上一个元素的输出值作为这个元素的输入值进行使用
+		- 如果再上一个处理器中，开发人员没有在Exchange中设置任何out message内容(即Exchange中out属性为null)，那么上一个处理器中的in message 内容将作为这个处理器的in message内容
+	--messageid
+	--header
+	--body
+	--attachment
+	
+Processor - 我们以在自定义的Processor处理器中做很多事情。
+		  - 这些事情可能包括处理业务逻辑、建立数据库连接去做业务数据存储、建立和某个第三方业务系统的RPC连接，但是我们一般不会那样做——那是Endpoint的工作
+          - Processor处理器中最主要的工作是进行业务数据格式的转换和中间数据的临时存储
+		  - 可以在Processor处理器中连接数据库
+
+		  
+		  
+		  
+
+------------------------------------------------Exchange----------------------------------------------------------
+An exchange in  Camel  is  the  message’s  container  during  routing.  
+An  exchange  also provides support for the various types of interactions between systems, also known as message exchange patterns (MEPs). 
+MEPs are used to differentiate between one-way and request-response messaging styles. The Camel exchange holds a pattern property that can be either
+
+■ InOnly—A one-way message (also known as an Eventmessage). For example, JMS messaging is often one-way messaging.
+
+■ InOut—A  request-response  message. For example, HTTP-based transports are often request  reply,  where  a  client  requests  to retrieve a web page, waiting for the reply from the server.
+
+Exchange ID
+=================================================
+标识交换的唯一ID。 如果您没有明确设置，则Camel将生成默认的唯一ID。
+
+Properties
+=================================================
+与 message headers类似，但它们持续整个交换的持续时间。 Properties用于包含全局级信息，而message headers特定于特定消息。
+
+Camel本身将在路由期间向交换添加各种属性。 作为开发人员，您可以在交换的生命周期内的任何时刻存储和检索属性。
+
+
+MEP 
+=================================================
+表示您是否使用InOnly or InOutmessaging样式的模式。 当模式为InOnly时，交换包含一条消息。
+对于InOut，还存在包含呼叫者的回复消息的输出消息。
+
+
+In Message
+=================================================
+这是输入消息，这是必需的。 in message包含请求消息
+
+
+Out Message
+=================================================
+这是一个可选消息，仅在MEPis InOut时才存在。 out message包含回复消息。
+
+
+
+
+
+--------------------------------------------------------Message----------------------------------------------------------
+是系统在使用消息传递通道时用于彼此通信的实体
+消息使用java.lang.String类型的标识符唯一标识。 标识符的唯一性由消息创建者强制执行并保证，它依赖于协议，并且没有保证格式。 
+对于未定义唯一消息标识方案的协议，Camel使用自己的UID生成器。
+这里的Message并没有区分In Message / Out Message
+
+
+
+
+--------------------------------------------------------Camel路由条件----------------------------------------------------------
+
+
+
+
+
+
+
+
+
